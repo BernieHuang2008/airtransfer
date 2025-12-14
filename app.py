@@ -86,7 +86,7 @@ def check_upload_permission(token, chunk_count):
     return True, "积分充足"
 
 # 抽取业务逻辑：初始化上传
-def init_upload(filename: str, file_size: int):
+def init_upload(filename: str, file_size: int, max_downloads: int = 2, max_retention: int = 2):
     file_id = hashlib.md5((filename + str(random.random())).encode()).hexdigest()
     token = hashlib.md5((file_id + str(random.random())).encode()).hexdigest()[:16]
     os.makedirs(f'uploads/parts/{file_id}', exist_ok=True)
@@ -103,7 +103,9 @@ def init_upload(filename: str, file_size: int):
         "filename": filename,
         "chunk_count": chunk_count,
         "chunks": chunks,
-        "token": token
+        "token": token,
+        "max_downloads": max_downloads,
+        "max_retention": max_retention
     }
     return file_id, token
 
@@ -145,15 +147,19 @@ def merge_chunks(file_id: str, userid: str):
     }
 
     code = get_code()
+    
+    max_downloads = files[file_id].get("max_downloads", 2)
+    max_retention = files[file_id].get("max_retention", 2)
+    
     if bucket.get(code, None) is None:
         bucket[code] = {
             "file_id": file_id,
             "user_id": userid,
             "upload_id": code,
             "download_count": 0,
-            "avaliable_download_count": 1,
+            "avaliable_download_count": max_downloads,
             "upload_time": time.time(),
-            "expired_time": time.time() + 3600
+            "expired_time": time.time() + (max_retention * 3600)
         }
 
     save_history()
@@ -318,7 +324,10 @@ async def start_upload(request: Request):
     if file_size > userData[user_token]["maximum_size"]:
         return JSONResponse({"code": "413", "message": f"文件大小超过限制，最大允许{userData[user_token]['maximum_size']}字节"}, status_code=413)
     
-    file_id, token = init_upload(filename, file_size)
+    max_downloads = int(params.get("max_downloads", 2))
+    max_retention = int(params.get("max_retention", 2))
+    
+    file_id, token = init_upload(filename, file_size, max_downloads, max_retention)
     
     # 返回剩余积分信息
     credit_info = {}

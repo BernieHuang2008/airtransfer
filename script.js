@@ -33,7 +33,10 @@ const translations = {
         almostDone: "Almost done...",
         copyCode: "Copy Code",
         codeCopied: "Code copied to clipboard!",
-        footerText: "© 2025 AirTransfer. Simple, Fast, Secure. By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️"
+        footerText: "© 2025 AirTransfer. Simple, Fast, Secure. By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️",
+        advancedOptions: "Advanced Options",
+        maxDownloads: "Max Downloads",
+        maxRetention: "Max Retention (Hours)"
     },
     zh: {
         appName: "AirTransfer",
@@ -61,7 +64,10 @@ const translations = {
         almostDone: "即将完成...",
         copyCode: "复制提取码",
         codeCopied: "提取码已复制到剪贴板！",
-        footerText: "© 2025 AirTransfer。简单、快速、安全。By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️"
+        footerText: "© 2025 AirTransfer。简单、快速、安全。By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️",
+        advancedOptions: "高级选项",
+        maxDownloads: "最大下载次数",
+        maxRetention: "最大保存时间（小时）"
     }
 };
 
@@ -418,8 +424,11 @@ function initializeUpload(file) {
 
     let utoken = getUserTokenFromLocalStorage();
 
+    const maxDownloads = $('#maxDownloads').val() || 2;
+    const maxRetention = $('#maxRetention').val() || 2;
+
     // 发起上传请求
-    $.post('/upload/start?filename=' + encodeURIComponent(file.name) + '&file_size=' + file.size + '&utoken=' + utoken, function(data) {
+    $.post('/upload/start?filename=' + encodeURIComponent(file.name) + '&file_size=' + file.size + '&utoken=' + utoken + '&max_downloads=' + maxDownloads + '&max_retention=' + maxRetention, function(data) {
         uploadChunk(file, data.file_id, 0, data.token);
     }).fail(function(err) {
         console.log(err);
