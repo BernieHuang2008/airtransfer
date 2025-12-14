@@ -19,3 +19,7 @@ userData.json
 
 # Ignore uploads directory
 uploads
+
+# ignore config file
+*lanbin_airtransfer.service
+config.py

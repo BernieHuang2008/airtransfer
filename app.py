@@ -1,6 +1,14 @@
 import os
 import hashlib
 import random
+import sys
+
+try:
+    import config
+except ImportError:
+    print("Error: config.py not found. Please ensure config.py exists.")
+    sys.exit(1)
+
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 import time

@@ -1,0 +1,13 @@
+[Unit]
+Description=X-Essay App
+After=network.target
+ 
+[Service]
+Type=simple
+ExecStart=/bin/bash ./start.sh
+WorkingDirectory=/path/to/service
+Restart=on-failure
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
