@@ -15,6 +15,7 @@ bucket.json
 files.json
 history.json
 manifest.json
+userData.json
 
 # Ignore uploads directory
 uploads

@@ -63,3 +63,32 @@ AirTransfer高度重视用户隐私：
 ---
 
 ©2025 AirTransfer
+
+## 配置文件说明
+
+### userData.json
+
+`userData.json` 用于存储用户信息和权限配置。文件内容为一个 JSON 对象，键为用户 Token，值为包含用户详细信息的对象。
+
+结构如下：
+
+```json
+{
+  "user_token": {
+    "username": "用户名 (String)",
+    "userid": "用户ID (String/Int)",
+    "upload_chance": "剩余上传积分 (Int)。小于 0 表示无限制。",
+    "maximum_size": "允许上传的最大文件大小，单位为字节 (Int)"
+  }
+}
+```
+
+**字段说明：**
+
+*   **Key (user_token)**: 用户的唯一标识 Token。
+*   **username**: 用户名。
+*   **userid**: 用户的唯一 ID。
+*   **upload_chance**: 用户的剩余上传积分（次数）。
+    *   如果值 `>= 0`，每次上传会扣除积分。
+    *   如果值 `< 0`，表示该用户拥有无限上传权限。
+*   **maximum_size**: 该用户允许上传的单文件最大字节数。
