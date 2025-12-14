@@ -126,7 +126,7 @@ body {
     gap: var(--spacing-md);
 }
 
-.theme-toggle, .language-toggle {
+.theme-toggle, .language-toggle, .settings-toggle {
     background: none;
     border: none;
     cursor: pointer;
@@ -140,7 +140,7 @@ body {
     transition: all var(--transition-normal);
 }
 
-.theme-toggle:hover, .language-toggle:hover {
+.theme-toggle:hover, .language-toggle:hover, .settings-toggle:hover {
     background-color: var(--border-color);
     color: var(--text-primary);
 }

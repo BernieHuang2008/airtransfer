@@ -23,6 +23,9 @@
             <button class="theme-toggle" id="themeToggle">
                 <i class="fas fa-moon"></i>
             </button>
+            <button class="settings-toggle" id="settingsToggle">
+                <i class="fas fa-cog"></i>
+            </button>
         </div>
     </header>
 
@@ -137,6 +140,12 @@
             </button>
             <h3 class="modal-title" data-i18n="enterToken">Enter Token</h3>
             <input type="text" id="tokenInput" class="input input-token" placeholder="Token" />
+            
+            <div class="form-group mt-3" style="text-align: left; display: flex; align-items: center; justify-content: center;">
+                <input type="checkbox" id="guestLogin" checked style="margin-right: 8px; width: auto; cursor: pointer;">
+                <label for="guestLogin" data-i18n="loginAsGuest" style="cursor: pointer; margin-bottom: 0;">Login as Guest</label>
+            </div>
+
             <button id="tokenSubmit" class="btn btn-primary btn-full mt-3" data-i18n="submit">Submit</button>
             <p id="tokenError" class="status-error mt-3"></p>
             <p class="status-info">If you are a reciever, just close the modal.</p>

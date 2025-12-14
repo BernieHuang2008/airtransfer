@@ -36,7 +36,8 @@ const translations = {
         footerText: "© 2025 AirTransfer. Simple, Fast, Secure. By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️",
         advancedOptions: "Advanced Options",
         maxDownloads: "Max Downloads",
-        maxRetention: "Max Retention (Hours)"
+        maxRetention: "Max Retention (Hours)",
+        loginAsGuest: "Login as Guest"
     },
     zh: {
         appName: "AirTransfer",
@@ -67,7 +68,8 @@ const translations = {
         footerText: "© 2025 AirTransfer。简单、快速、安全。By <a href='https://github.com/lanbinleo/airtransfer' target='_blank'>Lanbin Leo</a> with ❤️",
         advancedOptions: "高级选项",
         maxDownloads: "最大下载次数",
-        maxRetention: "最大保存时间（小时）"
+        maxRetention: "最大保存时间（小时）",
+        loginAsGuest: "以访客模式登录"
     }
 };
 
@@ -91,13 +93,22 @@ const chunkSize = 5 * 1024 * 1024; // 5MB chunk size
 let currentLanguage = 'en';
 let currentTheme = localStorage.getItem('theme') || 'light';
 
-function getUserTokenFromLocalStorage() {
-    console.log(localStorage.getItem('token'));
+function getUserToken() {
+    // Check sessionStorage first
+    let token = sessionStorage.getItem('token');
+    if (token) return token;
+    // Then check localStorage
     return localStorage.getItem('token');
 }
 
-function setUserTokenToLocalStorage(token) {
-    localStorage.setItem('token', token);
+function setUserToken(token, isGuest) {
+    if (isGuest) {
+        sessionStorage.setItem('token', token);
+        localStorage.removeItem('token');
+    } else {
+        localStorage.setItem('token', token);
+        sessionStorage.removeItem('token');
+    }
 }
 
 
@@ -123,7 +134,7 @@ function initializeApp() {
     applyLanguage(currentLanguage);
 
     // 如果localStorage中没有token，弹出tokenModal
-    if (getUserTokenFromLocalStorage() == null) {
+    if (getUserToken() == null) {
         $('#tokenModal').show();
         // set opacity to 1
         $('#tokenModal').css('opacity', '1');
@@ -148,8 +159,9 @@ $('#closeTokenModal').on('click', function() {
 
 $('#tokenSubmit').on('click', function() {
     const token = $('#tokenInput').val().trim();
+    const isGuest = $('#guestLogin').is(':checked');
     if (token) {
-        setUserTokenToLocalStorage(token);
+        setUserToken(token, isGuest);
         $('#tokenModal').hide();
     } else {
         $('#tokenError').text(translations[currentLanguage].tokenRequired || 'Token is required');
@@ -218,6 +230,12 @@ function initEventListeners() {
     $('#themeToggle').on('click', function() {
         currentTheme = currentTheme === 'light' ? 'dark' : 'light';
         applyTheme(currentTheme);
+    });
+
+    // Settings toggle
+    $('#settingsToggle').on('click', function() {
+        $('#tokenModal').show();
+        $('#tokenModal').css('opacity', '1');
     });
     
     // Language toggle
@@ -422,7 +440,7 @@ function initializeUpload(file) {
     $('#uploadSuccess').hide();
     $('#uploadProgress').show();
 
-    let utoken = getUserTokenFromLocalStorage();
+    let utoken = getUserToken();
 
     const maxDownloads = $('#maxDownloads').val() || 2;
     const maxRetention = $('#maxRetention').val() || 2;
@@ -454,7 +472,7 @@ function uploadChunk(file, fileId, chunkId, token) {
     const reader = new FileReader();
     reader.onload = function(e) {
         $.ajax({
-            url: '/upload/chunk?file_id=' + fileId + '&chunk_id=' + chunkId + '&token=' + token + '&utoken=' + getUserTokenFromLocalStorage(),
+            url: '/upload/chunk?file_id=' + fileId + '&chunk_id=' + chunkId + '&token=' + token + '&utoken=' + getUserToken(),
             type: 'POST',
             data: e.target.result,
             processData: false,
