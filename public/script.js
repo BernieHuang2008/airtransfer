@@ -84,7 +84,7 @@ const failed_code = {
 }
 
 // Configuration
-const chunkSize = 5 * 1024 * 1024; // 5MB chunk size
+const chunkSize = 4 * 1024 * 1024; // 4MB chunk size (Vercel limit)
 let currentLanguage = 'en';
 let currentTheme = localStorage.getItem('theme') || 'light';
 
