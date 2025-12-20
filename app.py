@@ -29,6 +29,7 @@ os.makedirs('uploads/parts', exist_ok=True)
 os.makedirs('uploads/results', exist_ok=True)
 
 CHUNK_SIZE = 5 * 1024 * 1024  # 5MB 固定分块大小
+MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB 最大文件大小
 
 def load_user_data():
     global userData
@@ -43,46 +44,22 @@ def get_code():
     return ''.join([str(random.randint(0, 9)) for _ in range(6)])
 
 def deduct_credit(token):
-    load_user_data()
-    if token in userData:
-        if userData[token]["upload_chance"] >= 0:
-            userData[token]["upload_chance"] -= 1
-            save_user_data()
-            return userData[token]
-        else:
-            return None
-    return None
+    # Always return success, effectively infinite upload chance
+    return {"upload_chance": 999999}
         
 def get_userid(token):
-    load_user_data()
-    if token in userData:
-        return userData[token]["userid"]
-    return None
+    # Return a default user ID
+    return "default_user"
 
 def save_user_data():
     with open('userData.json', 'w') as f:
         f.write(json.dumps(userData))
 
 def get_remain_credit(token):
-    load_user_data()
-    if token in userData:
-        return userData[token]["upload_chance"]
-    return None
+    return 999999
 
 def check_upload_permission(token, chunk_count):
     """检查用户是否有足够的积分上传文件"""
-    load_user_data()
-    if token not in userData:
-        return False, "无效的用户令牌"
-    
-    # 判断积分是否为无限制
-    if userData[token]["upload_chance"] < 0:
-        return True, "无限制上传"
-    
-    # 检查积分是否足够上传所有分块
-    if userData[token]["upload_chance"] < chunk_count:
-        return False, f"积分不足，需要{chunk_count}积分，当前积分{userData[token]['upload_chance']}"
-    
     return True, "积分充足"
 
 # 抽取业务逻辑：初始化上传
@@ -295,15 +272,7 @@ async def start_upload(request: Request):
     params = request.query_params
     filename = params.get("filename")
     file_size = params.get("file_size")
-    user_token = params.get("utoken")
-    
-    if not user_token:
-        return JSONResponse({"code": "400", "message": "utoken is required"}, status_code=400)
-    
-    # 验证用户token是否有效
-    load_user_data()
-    if user_token not in userData:
-        return JSONResponse({"code": "413", "message": "无效的用户令牌"}, status_code=401)
+    # user_token = params.get("utoken") # Removed token check
     
     if not filename or not file_size:
         return JSONResponse({"code": "400", "message": "filename or file_size is required"}, status_code=400)
@@ -315,27 +284,20 @@ async def start_upload(request: Request):
     # 计算分块数量
     chunk_count = file_size // CHUNK_SIZE + 1
     
-    # 检查用户权限
-    has_permission, message = check_upload_permission(user_token, chunk_count)
-    if not has_permission:
-        return JSONResponse({"code": "403", "message": message}, status_code=403)
-    
     # 检查文件大小是否超过限制
-    if file_size > userData[user_token]["maximum_size"]:
-        return JSONResponse({"code": "413", "message": f"文件大小超过限制，最大允许{userData[user_token]['maximum_size']}字节"}, status_code=413)
+    if file_size > MAX_FILE_SIZE:
+        return JSONResponse({"code": "413", "message": f"文件大小超过限制，最大允许{MAX_FILE_SIZE}字节"}, status_code=413)
     
     max_downloads = int(params.get("max_downloads", 2))
     max_retention = int(params.get("max_retention", 2))
     
     file_id, token = init_upload(filename, file_size, max_downloads, max_retention)
     
-    # 返回剩余积分信息
-    credit_info = {}
-    if userData[user_token]["upload_chance"] >= 0:
-        credit_info = {
-            "remain_credit": userData[user_token]["upload_chance"],
-            "required_credit": chunk_count
-        }
+    # 返回剩余积分信息 (Always return infinite/dummy)
+    credit_info = {
+        "remain_credit": 999999,
+        "required_credit": chunk_count
+    }
     
     return JSONResponse({
         "file_id": file_id, 
@@ -357,31 +319,15 @@ async def upload_chunk(request: Request):
     except ValueError:
         raise HTTPException(status_code=411, detail="invalid chunk_id")
     
-    # 检查用户积分
-    user_token = params.get("utoken")
-    if not user_token:
-        raise HTTPException(status_code=412, detail="缺少utoken参数")
-    
-    load_user_data()
-    if user_token not in userData:
-        raise HTTPException(status_code=413, detail="无效的用户令牌")
-    
-    # 检查用户是否有足够积分
-    if userData[user_token]["upload_chance"] >= 0 and userData[user_token]["upload_chance"] <= 0:
-        raise HTTPException(status_code=414, detail="积分不足")
+    # Removed user token and credit checks
     
     data = await request.body()
     msg = save_chunk(file_id, chunk_id, data, token)
     
-    # 扣除积分
-    result = deduct_credit(user_token)
-    if result is None and userData[user_token]["upload_chance"] >= 0:
-        raise HTTPException(status_code=415, detail="扣除积分失败")
+    # Removed credit deduction
     
     # 返回剩余积分
-    remain_credit = None
-    if userData[user_token]["upload_chance"] >= 0:
-        remain_credit = userData[user_token]["upload_chance"]
+    remain_credit = 999999
         
     response = {"message": msg}
     if remain_credit is not None:

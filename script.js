@@ -76,14 +76,9 @@ const translations = {
 const failed_code = {
     // code: ["zh", "en"]
     "400": {"zh":"用户未登录，无法上传", "en": "User not logged in, cannot upload"},
-    "401": {"zh":"上传文件过大，最大支持5GB", "en": "Uploaded file is too large, maximum support 5GB"},
-    "402": {"zh":"用户剩余点数不足，无法上传", "en": "User has insufficient remaining points to upload"},
+    "401": {"zh":"上传文件过大，最大支持2GB", "en": "Uploaded file is too large, maximum support 2GB"},
     "410": {"zh":"缺少file_id或chunk_id参数", "en": "Missing file_id or chunk_id parameters"},
     "411": {"zh":"无效的chunk_id", "en": "Invalid chunk_id"},
-    "412": {"zh":"缺少utoken参数", "en": "Missing utoken parameter"},
-    "413": {"zh":"无效的用户令牌", "en": "Invalid user token"},
-    "414": {"zh":"积分不足", "en": "Insufficient points"},
-    "415": {"zh":"扣除积分失败", "en": "Failed to deduct points"},
     "500": {"zh":"服务器错误，请稍后重试", "en": "Server error, please try again later"},
     "503": {"zh":"服务器维护中，请稍后重试", "en": "Server maintenance, please try again later"},
 }
@@ -94,21 +89,11 @@ let currentLanguage = 'en';
 let currentTheme = localStorage.getItem('theme') || 'light';
 
 function getUserToken() {
-    // Check sessionStorage first
-    let token = sessionStorage.getItem('token');
-    if (token) return token;
-    // Then check localStorage
-    return localStorage.getItem('token');
+    return "dummy_token";
 }
 
 function setUserToken(token, isGuest) {
-    if (isGuest) {
-        sessionStorage.setItem('token', token);
-        localStorage.removeItem('token');
-    } else {
-        localStorage.setItem('token', token);
-        sessionStorage.removeItem('token');
-    }
+    // No-op
 }
 
 
@@ -133,12 +118,7 @@ function initializeApp() {
     }
     applyLanguage(currentLanguage);
 
-    // 如果localStorage中没有token，弹出tokenModal
-    if (getUserToken() == null) {
-        $('#tokenModal').show();
-        // set opacity to 1
-        $('#tokenModal').css('opacity', '1');
-    }
+    // Token modal logic removed
     
     // Initialize event listeners
     initEventListeners();
@@ -152,34 +132,7 @@ function initializeApp() {
     $('body').css('opacity', '1');
 }
 
-// Token modal event handling
-$('#closeTokenModal').on('click', function() {
-    $('#tokenModal').hide();
-});
-
-$('#tokenSubmit').on('click', function() {
-    const token = $('#tokenInput').val().trim();
-    const isGuest = $('#guestLogin').is(':checked');
-    if (token) {
-        setUserToken(token, isGuest);
-        $('#tokenModal').hide();
-    } else {
-        $('#tokenError').text(translations[currentLanguage].tokenRequired || 'Token is required');
-    }
-});
-
-// Handle token input changes
-$('#tokenInput').on('input', function() {
-    // Clear error when user starts typing
-    $('#tokenError').text('');
-});
-
-// Close token modal if user clicks outside of it
-$(window).on('click', function(event) {
-    if ($(event.target).is('#tokenModal')) {
-        $('#tokenModal').hide();
-    }
-});
+// Token modal event handling removed
 
 // Copy code to clipboard
 $('#copyCode').on('click', function() {
@@ -232,11 +185,7 @@ function initEventListeners() {
         applyTheme(currentTheme);
     });
 
-    // Settings toggle
-    $('#settingsToggle').on('click', function() {
-        $('#tokenModal').show();
-        $('#tokenModal').css('opacity', '1');
-    });
+    // Settings toggle removed
     
     // Language toggle
     $('#langToggle').on('click', function() {
@@ -440,13 +389,13 @@ function initializeUpload(file) {
     $('#uploadSuccess').hide();
     $('#uploadProgress').show();
 
-    let utoken = getUserToken();
+    // utoken removed
 
     const maxDownloads = $('#maxDownloads').val() || 2;
     const maxRetention = $('#maxRetention').val() || 2;
 
     // 发起上传请求
-    $.post('/upload/start?filename=' + encodeURIComponent(file.name) + '&file_size=' + file.size + '&utoken=' + utoken + '&max_downloads=' + maxDownloads + '&max_retention=' + maxRetention, function(data) {
+    $.post('/upload/start?filename=' + encodeURIComponent(file.name) + '&file_size=' + file.size + '&max_downloads=' + maxDownloads + '&max_retention=' + maxRetention, function(data) {
         uploadChunk(file, data.file_id, 0, data.token);
     }).fail(function(err) {
         console.log(err);
@@ -472,7 +421,7 @@ function uploadChunk(file, fileId, chunkId, token) {
     const reader = new FileReader();
     reader.onload = function(e) {
         $.ajax({
-            url: '/upload/chunk?file_id=' + fileId + '&chunk_id=' + chunkId + '&token=' + token + '&utoken=' + getUserToken(),
+            url: '/upload/chunk?file_id=' + fileId + '&chunk_id=' + chunkId + '&token=' + token,
             type: 'POST',
             data: e.target.result,
             processData: false,
