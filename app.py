@@ -363,6 +363,10 @@ async def download_file(code: str):
         filename=history[file_id]["filename"]
     )
 
+@app.get("/")
+async def root():
+    return FileResponse(get_path("index.html"))
+
 @app.get("/api/py/hello")
 def hello():
     return {"message": "Hello from FastAPI on Vercel!"}
