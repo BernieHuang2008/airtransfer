@@ -365,7 +365,7 @@ async def download_file(code: str):
 
 @app.get("/")
 async def root():
-    return FileResponse(get_path("index.html"))
+    return FileResponse(get_path("public/index.html"))
 
 @app.get("/api/py/hello")
 def hello():
