@@ -2,7 +2,7 @@ import os
 import hashlib
 import random
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 import time
 import json
 
@@ -365,7 +365,7 @@ async def download_file(code: str):
 
 @app.get("/")
 async def root():
-    return FileResponse(get_path("public/index.html"))
+    return RedirectResponse(url="/index.html")
 
 @app.get("/api/py/hello")
 def hello():
