@@ -7,34 +7,42 @@ import time
 import json
 
 app = FastAPI()
+
+# Vercel ephemeral storage path
+STORAGE_PATH = "/tmp"
+
 files = {}  # 存储文件的分块信息
 history = {}  # 存储上传历史，主要是永远保留的文件数据
 bucket = {} # 文件id、上传id、下载次数、过期时间，主要是业务数据，储存有效的下载信息
 userData = {} # 用户数据
 
+# Helper to get full path
+def get_path(filename):
+    return os.path.join(STORAGE_PATH, filename)
+
 # 读取history和bucket
-if os.path.exists('history.json'):
-    with open('history.json', 'r') as f:
+if os.path.exists(get_path('history.json')):
+    with open(get_path('history.json'), 'r') as f:
         history = json.loads(f.read())
-if os.path.exists('bucket.json'):
-    with open('bucket.json', 'r') as f:
+if os.path.exists(get_path('bucket.json')):
+    with open(get_path('bucket.json'), 'r') as f:
         bucket = json.loads(f.read())
-if os.path.exists('files.json'):
-    with open('files.json', 'r') as f:
+if os.path.exists(get_path('files.json')):
+    with open(get_path('files.json'), 'r') as f:
         files = json.loads(f.read())
 
 
 # 创建文件夹
-os.makedirs('uploads/parts', exist_ok=True)
-os.makedirs('uploads/results', exist_ok=True)
+os.makedirs(get_path('uploads/parts'), exist_ok=True)
+os.makedirs(get_path('uploads/results'), exist_ok=True)
 
 CHUNK_SIZE = 5 * 1024 * 1024  # 5MB 固定分块大小
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB 最大文件大小
 
 def load_user_data():
     global userData
-    if os.path.exists('userData.json'):
-        with open('userData.json', 'r') as f:
+    if os.path.exists(get_path('userData.json')):
+        with open(get_path('userData.json'), 'r') as f:
             userData = json.loads(f.read())
     else:
         userData = {}
@@ -52,7 +60,7 @@ def get_userid(token):
     return "default_user"
 
 def save_user_data():
-    with open('userData.json', 'w') as f:
+    with open(get_path('userData.json'), 'w') as f:
         f.write(json.dumps(userData))
 
 def get_remain_credit(token):
@@ -66,7 +74,7 @@ def check_upload_permission(token, chunk_count):
 def init_upload(filename: str, file_size: int, max_downloads: int = 2, max_retention: int = 2):
     file_id = hashlib.md5((filename + str(random.random())).encode()).hexdigest()
     token = hashlib.md5((file_id + str(random.random())).encode()).hexdigest()[:16]
-    os.makedirs(f'uploads/parts/{file_id}', exist_ok=True)
+    os.makedirs(get_path(f'uploads/parts/{file_id}'), exist_ok=True)
     # 整除得到分块数量，因为舍弃余数，所以需要加 1
     chunk_count = file_size // CHUNK_SIZE + 1
     chunks = []
@@ -98,7 +106,7 @@ def save_chunk(file_id: str, chunk_id: int, data: bytes, token: str):
     if files[file_id]["chunks"][chunk_id]['status']:
         return "chunk already uploaded"
     files[file_id]["chunks"][chunk_id]['status'] = True
-    filepath = f'uploads/parts/{file_id}/{chunk_id}.chk'
+    filepath = get_path(f'uploads/parts/{file_id}/{chunk_id}.chk')
     with open(filepath, 'wb') as f:
         f.write(data)
     files[file_id]["chunks"][chunk_id]['path'] = f"{chunk_id}.chk"
@@ -110,16 +118,16 @@ def merge_chunks(file_id: str, userid: str):
         raise HTTPException(status_code=404, detail="file_id not found")
     filename = files[file_id]["filename"]
     chunk_count = files[file_id]["chunk_count"]
-    chunk_paths = [f'uploads/parts/{file_id}/{i}.chk' for i in range(chunk_count)]
-    with open(f'uploads/results/{file_id}.rst', 'wb') as f:
+    chunk_paths = [get_path(f'uploads/parts/{file_id}/{i}.chk') for i in range(chunk_count)]
+    with open(get_path(f'uploads/results/{file_id}.rst'), 'wb') as f:
         for chunk_path in chunk_paths:
             with open(chunk_path, 'rb') as chunk_file:
                 f.write(chunk_file.read())
     # 加入到上传历史
     history[file_id] = {
         "filename": filename,
-        "path": f"uploads/results/{file_id}.rst",
-        "size": os.path.getsize(f"uploads/results/{file_id}.rst"),
+        "path": get_path(f"uploads/results/{file_id}.rst"),
+        "size": os.path.getsize(get_path(f"uploads/results/{file_id}.rst")),
         "time": time.time(),
     }
 
@@ -179,10 +187,10 @@ def delete_expire_files():
             
         # 清理孤立的分块文件夹
         active_file_ids = set(info["file_id"] for info in bucket.values())
-        if os.path.exists('uploads/parts'):
-            for folder in os.listdir('uploads/parts'):
+        if os.path.exists(get_path('uploads/parts')):
+            for folder in os.listdir(get_path('uploads/parts')):
                 if folder not in active_file_ids:
-                    folder_path = os.path.join('uploads/parts', folder)
+                    folder_path = os.path.join(get_path('uploads/parts'), folder)
                     if os.path.isdir(folder_path):
                         try:
                             # 删除文件夹中的所有文件
@@ -201,13 +209,13 @@ def delete_tmp_files(file_id):
     # 删除分块文件
     for i in range(files[file_id]["chunk_count"]):
         try:
-            os.remove(f'uploads/parts/{file_id}/{i}.chk')
+            os.remove(get_path(f'uploads/parts/{file_id}/{i}.chk'))
         except FileNotFoundError:
             pass  # 忽略已不存在的文件
             
     # 删除空文件夹
     try:
-        os.rmdir(f'uploads/parts/{file_id}')
+        os.rmdir(get_path(f'uploads/parts/{file_id}'))
     except OSError:
         pass  # 忽略无法删除的文件夹（可能非空）
 
@@ -236,35 +244,14 @@ def get_file_info(code):
     
 
 def save_history():
-    with open('history.json', 'w') as f:
+    with open(get_path('history.json'), 'w') as f:
         f.write(json.dumps(history))
-    with open('bucket.json', 'w') as f:
+    with open(get_path('bucket.json'), 'w') as f:
         f.write(json.dumps(bucket))
-    with open('files.json', 'w') as f:
+    with open(get_path('files.json'), 'w') as f:
         f.write(json.dumps(files))
 
-@app.get("/")
-async def index():
-    # 返回 index.html 页面
-    return FileResponse("index.html")
-
-@app.get("/style.css")
-async def style():
-    return FileResponse("style.css")
-
-@app.get("/script.js")
-async def script():
-    return FileResponse("script.js")
-
-# manifest
-@app.get("/manifest.json")
-async def manifest():
-    return FileResponse("manifest.json")
-
-# g4s.js
-@app.get("/g4s.js")
-async def g4s():
-    return FileResponse("g4s.js")
+# Static file routes removed for Vercel deployment
 
 @app.post("/upload/start")
 async def start_upload(request: Request):
@@ -396,4 +383,4 @@ if __name__ == '__main__':
     cleanup_thread.start()
     
     # 启动服务器
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("index:app", host="0.0.0.0", port=8000, reload=True)

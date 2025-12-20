@@ -1,0 +1,7 @@
+{
+    "rewrites": [
+        { "source": "/upload/(.*)", "destination": "/api/index.py" },
+        { "source": "/info/(.*)", "destination": "/api/index.py" },
+        { "source": "/download/(.*)", "destination": "/api/index.py" }
+    ]
+}
